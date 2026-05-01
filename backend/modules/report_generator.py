@@ -2,112 +2,102 @@ import os
 import uuid
 from datetime import datetime
 
-# Директория для отчетов
 REPORT_DIR = "/tmp/legal_ai_reports"
 
 
 class ReportGenerator:
-    # Класс для генерации PDF отчетов
-    
     def __init__(self):
         os.makedirs(REPORT_DIR, exist_ok=True)
 
-    def generate_pdf(self, data: dict) -> str:
-        """Генерация PDF отчета из данных анализа."""
+    def generate_pdf(self, data: dict, request_meta: dict = None) -> str: # type: ignore
+        """Generate a PDF report from analysis data. Returns path to file."""
         try:
             from reportlab.lib.pagesizes import A4
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib.units import cm
             from reportlab.lib import colors
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-            from reportlab.platypus import KeepTogether
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
         except ImportError:
-            raise RuntimeError("reportlab not installed. Run: pip install reportlab")
+            raise RuntimeError("reportlab не установлен. Запустите: pip install reportlab")
 
-        analysis = data.get("analysis", {})
-        filename = data.get("filename", "document")
-        analyzed_at = data.get("analyzed_at", datetime.utcnow().isoformat())
+        analysis = data.get("analysis") or data  # support both formats
+        filename = (request_meta or {}).get("filename", "document")
+        analyzed_at = (request_meta or {}).get("analyzed_at", datetime.utcnow().isoformat())
+        lawyer = (request_meta or {}).get("lawyer", None)
 
         output_path = os.path.join(REPORT_DIR, f"report_{uuid.uuid4().hex}.pdf")
-
-        doc = SimpleDocTemplate(
-            output_path,
-            pagesize=A4,
-            rightMargin=2 * cm,
-            leftMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm
-        )
+        doc = SimpleDocTemplate(output_path, pagesize=A4,
+            rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
 
         styles = getSampleStyleSheet()
+        gold = colors.HexColor('#c9a84c')
+        dark_blue = colors.HexColor('#2d4a8a')
+        red = colors.HexColor('#e05c5c')
+        orange = colors.HexColor('#e08a3c')
+        green = colors.HexColor('#4cae7e')
+        purple = colors.HexColor('#7c6af7')
+        grey = colors.HexColor('#888888')
+
+        title_s = ParagraphStyle('T', parent=styles['Title'], fontSize=22, textColor=gold, spaceAfter=6)
+        h2_s = ParagraphStyle('H2', parent=styles['Heading2'], fontSize=14, textColor=dark_blue, spaceBefore=16, spaceAfter=6)
+        body_s = ParagraphStyle('B', parent=styles['Normal'], fontSize=10, leading=15, spaceAfter=4)
+        small_s = ParagraphStyle('S', parent=styles['Normal'], fontSize=8, textColor=grey)
+        indent_s = ParagraphStyle('I', parent=body_s, leftIndent=16, textColor=colors.HexColor('#555555'))
+
         story = []
-
-        # Стиль заголовка
-        title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=20, textColor=colors.HexColor('#1a1a2e'), spaceAfter=6)
-        h2_style = ParagraphStyle('H2', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#2d4a8a'), spaceBefore=16, spaceAfter=6)
-        body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=10, leading=15, spaceAfter=4)
-        small_style = ParagraphStyle('Small', parent=styles['Normal'], fontSize=8, textColor=colors.grey)
-
-        # Заголовок
-        story.append(Paragraph("Юридический анализ документа", title_style))
-        story.append(Paragraph(f"Документ: {filename}", small_style))
-        story.append(Paragraph(f"Дата анализа: {analyzed_at[:10]}", small_style))
-        story.append(Spacer(1, 12))
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#2d4a8a')))
+        story.append(Paragraph("⚖ Lex Analytica — Юридический анализ", title_s))
+        story.append(Paragraph(f"Документ: {filename}", small_s))
+        story.append(Paragraph(f"Дата анализа: {analyzed_at[:10]}", small_s))
+        if lawyer:
+            story.append(Paragraph(f"Проверил юрист: {lawyer}", small_s))
+        story.append(Spacer(1, 8))
+        story.append(HRFlowable(width="100%", thickness=1, color=gold))
         story.append(Spacer(1, 12))
 
-        # Краткое описание
+        if analysis.get("document_type"):
+            story.append(Paragraph(f"<b>Тип документа:</b> {analysis['document_type']}", body_s))
+        if analysis.get("parties"):
+            story.append(Paragraph(f"<b>Стороны:</b> {', '.join(analysis['parties'])}", body_s))
+        story.append(Spacer(1, 8))
+
         if analysis.get("summary"):
-            story.append(Paragraph("Краткое описание", h2_style))
-            story.append(Paragraph(analysis["summary"], body_style))
-            story.append(Spacer(1, 8))
+            story.append(Paragraph("Краткое описание", h2_s))
+            story.append(Paragraph(analysis["summary"], body_s))
 
-        # Тип документа и стороны
-        if analysis.get("document_type") or analysis.get("parties"):
-            story.append(Paragraph("Общие сведения", h2_style))
-            if analysis.get("document_type"):
-                story.append(Paragraph(f"<b>Тип документа:</b> {analysis['document_type']}", body_style))
-            if analysis.get("parties"):
-                story.append(Paragraph(f"<b>Стороны:</b> {', '.join(analysis['parties'])}", body_style))
-            story.append(Spacer(1, 8))
-
-        # Объяснение простым языком
         if analysis.get("plain_language_summary"):
-            story.append(Paragraph("Объяснение простым языком", h2_style))
-            story.append(Paragraph(analysis["plain_language_summary"], body_style))
-            story.append(Spacer(1, 8))
+            story.append(Paragraph("Объяснение простым языком", h2_s))
+            story.append(Paragraph(analysis["plain_language_summary"], body_s))
 
-        # Ключевые условия
-        if analysis.get("key_terms"):
-            story.append(Paragraph("Ключевые условия", h2_style))
-            for term in analysis["key_terms"]:
-                story.append(Paragraph(f"<b>[{term.get('category', '')}]</b> {term.get('title', '')}", body_style))
-                story.append(Paragraph(term.get("description", ""), ParagraphStyle('indent', parent=body_style, leftIndent=16, textColor=colors.HexColor('#444444'))))
-                story.append(Spacer(1, 4))
+        if analysis.get("lawyer_comment"):
+            story.append(Paragraph("Комментарий юриста", h2_s))
+            story.append(Paragraph(analysis["lawyer_comment"], body_s))
 
-        # Риски
         if analysis.get("risks"):
-            story.append(Paragraph("Риски", h2_style))
-            risk_colors = {"high": "#c0392b", "medium": "#e67e22", "low": "#27ae60"}
-            risk_labels = {"high": "ВЫСОКИЙ", "medium": "СРЕДНИЙ", "low": "НИЗКИЙ"}
+            story.append(Paragraph("Выявленные риски", h2_s))
+            level_colors = {"high": red, "medium": orange, "low": green}
+            level_labels = {"high": "ВЫСОКИЙ", "medium": "СРЕДНИЙ", "low": "НИЗКИЙ"}
             for risk in analysis["risks"]:
                 level = risk.get("level", "medium")
-                color = risk_colors.get(level, "#888888")
-                label = risk_labels.get(level, "СРЕДНИЙ")
-                story.append(Paragraph(
-                    f'<font color="{color}"><b>▲ {label}</b></font> — {risk.get("title", "")}',
-                    body_style
-                ))
-                story.append(Paragraph(risk.get("description", ""), ParagraphStyle('risk_desc', parent=body_style, leftIndent=16)))
+                c = level_colors.get(level, grey)
+                lbl = level_labels.get(level, "СРЕДНИЙ")
+                story.append(Paragraph(f'<font color="#{c.hexval()[1:]}"><b>[{lbl}]</b></font> {risk.get("title", "")}', body_s))
+                story.append(Paragraph(risk.get("description", ""), indent_s))
                 if risk.get("recommendation"):
-                    story.append(Paragraph(f"<i>Рекомендация: {risk['recommendation']}</i>", ParagraphStyle('rec', parent=body_style, leftIndent=16, textColor=colors.HexColor('#2d4a8a'))))
-                story.append(Spacer(1, 6))
+                    story.append(Paragraph(f"<i>→ {risk['recommendation']}</i>",
+                        ParagraphStyle('rec', parent=indent_s, textColor=purple)))
+                story.append(Spacer(1, 4))
 
-        # Футер
+        if analysis.get("key_terms"):
+            story.append(Paragraph("Ключевые условия", h2_s))
+            for term in analysis["key_terms"]:
+                story.append(Paragraph(f"<b>[{term.get('category', '')}]</b> {term.get('title', '')}", body_s))
+                story.append(Paragraph(term.get("description", ""), indent_s))
+                story.append(Spacer(1, 4))
+
         story.append(Spacer(1, 20))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=grey))
         story.append(Spacer(1, 6))
-        story.append(Paragraph("Сгенерировано юридическим AI-помощником. Не является юридической консультацией.", small_style))
+        story.append(Paragraph("Сформировано Lex Analytica. Не является официальной юридической консультацией.", small_s))
 
         doc.build(story)
         return output_path

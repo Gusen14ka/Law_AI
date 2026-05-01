@@ -1,60 +1,46 @@
 import os
 import uuid
 import aiofiles
+from pathlib import Path
 from fastapi import UploadFile, HTTPException
 
-# Разрешенные расширения файлов
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
-# Максимальный размер файла в МБ
-MAX_FILE_SIZE_MB = 10
-# Максимальный размер файла в байтах
-MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-# Директория для временных загрузок
-TEMP_DIR = "/tmp/legal_ai_uploads"
+MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
 
 
 class FileHandler:
-    # Класс для обработки загрузки файлов
-    
     def __init__(self):
-        os.makedirs(TEMP_DIR, exist_ok=True)
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    async def handle_upload(self, file: UploadFile) -> str:
-        """Валидация и сохранение загруженного файла. Возвращает путь к сохраненному файлу."""
-        
-        # Валидация расширения
+    async def handle_upload(self, file: UploadFile) -> tuple[str, int]:
+        """Validate and save file. Returns (saved_path, file_size)."""
         filename = file.filename or ""
-        ext = os.path.splitext(filename)[1].lower()
+        ext = Path(filename).suffix.lower()
+
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported file format '{ext}'. Only PDF and DOCX are accepted."
+                detail=f"Неподдерживаемый формат '{ext}'. Только PDF и DOCX."
             )
-        
-        # Чтение содержимого
+
         content = await file.read()
-        
-        # Валидация размера
-        if len(content) > MAX_FILE_SIZE_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File size exceeds {MAX_FILE_SIZE_MB}MB limit."
-            )
-        
+
         if len(content) == 0:
-            raise HTTPException(status_code=400, detail="File is empty.")
-        
-        # Сохранение с уникальным именем
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        save_path = os.path.join(TEMP_DIR, unique_name)
-        
+            raise HTTPException(status_code=400, detail="Файл пустой.")
+        if len(content) > MAX_FILE_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="Файл превышает 15 МБ.")
+
+        file_uuid = uuid.uuid4().hex
+        save_path = UPLOAD_DIR / f"{file_uuid}{ext}"
+
         async with aiofiles.open(save_path, "wb") as f:
             await f.write(content)
-        
-        return save_path
+
+        return str(save_path), len(content)
 
     def cleanup(self, path: str):
-        """Удаление временного файла."""
+        """Delete temp file safely."""
         try:
             if path and os.path.exists(path):
                 os.remove(path)
