@@ -1,0 +1,119 @@
+groups:
+  # ── АВАРИЯ: Сервис недоступен ─────────────────────────────────
+  - name: service_availability
+    rules:
+      - alert: WebServiceDown
+        expr: up{job="lex-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "🚨 АВАРИЯ: Веб-сервис Lex Analytica недоступен"
+          description: |
+            Бэкенд {{ $labels.instance }} не отвечает уже {{ $value }} секунд.
+            Prometheus не может получить метрики с /metrics.
+            
+            Действия:
+            1. Проверить docker-compose logs backend
+            2. Перезапустить: docker-compose restart backend
+            3. Проверить БД: docker-compose logs db
+
+      - alert: DatabaseDown
+        expr: pg_up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 АВАРИЯ: PostgreSQL недоступен"
+          description: "База данных {{ $labels.instance }} не отвечает."
+
+      - alert: OllamaDown
+        expr: probe_success{job="ollama"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Ollama (LLM) недоступна"
+          description: "AI-сервис не отвечает. Анализ документов невозможен."
+
+  # ── Производительность ────────────────────────────────────────
+  - name: performance
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="lex-backend"}[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокое время ответа API"
+          description: "95-й перцентиль времени ответа: {{ $value | humanizeDuration }}. Норма < 5с."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="lex-backend", status=~"5.."}[5m]) / rate(http_requests_total{job="lex-backend"}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокий процент ошибок API"
+          description: "Доля 5xx ошибок: {{ $value | humanizePercentage }}. Норма < 5%."
+
+      - alert: HighRequestRate
+        expr: rate(http_requests_total{job="lex-backend"}[1m]) > 100
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокая нагрузка на API"
+          description: "{{ $value | humanize }} запросов/сек. Возможна DDoS-атака."
+
+  # ── Ресурсы ───────────────────────────────────────────────────
+  - name: resources
+    rules:
+      - alert: HighCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокая загрузка CPU"
+          description: "CPU: {{ $value | humanize }}%. Норма < 85%."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Заканчивается место на диске"
+          description: "Свободно {{ $value | humanize }}% диска. Норма > 15%."
+
+      - alert: HighMemory
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокое потребление RAM"
+          description: "RAM занята на {{ $value | humanize }}%. Норма < 90%."
+
+  # ── База данных ───────────────────────────────────────────────
+  - name: database
+    rules:
+      - alert: TooManyConnections
+        expr: pg_stat_activity_count > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Много соединений PostgreSQL"
+          description: "{{ $value }} активных соединений. Лимит: 100."
+
+      - alert: SlowQueries
+        expr: rate(pg_stat_statements_mean_exec_time_seconds[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Медленные SQL-запросы"
+          description: "Среднее время запроса > 1 секунды."

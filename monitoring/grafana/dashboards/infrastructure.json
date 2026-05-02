@@ -1,0 +1,24 @@
+{
+  "title": "Infrastructure",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CPU Usage",
+      "targets": [
+        {
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "RAM Usage",
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Debugging",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "logs",
+      "title": "Backend Logs",
+      "targets": [
+        {
+          "expr": "{service=\"backend\"}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "AI Queue",
+      "targets": [
+        {
+          "expr": "lex_ai_queue_size"
+        }
+      ]
+    }
+  ]
+}

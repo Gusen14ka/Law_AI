@@ -1,0 +1,42 @@
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Использовать имя контейнера как лейбл
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container
+      # Добавить compose-сервис
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+      # Только контейнеры нашего проекта
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        regex: 'project|claude_try_with_monitoring'
+        action: keep
+
+    pipeline_stages:
+      # Парсим Python логи
+      - regex:
+          expression: '(?P<level>INFO|WARNING|ERROR|CRITICAL|DEBUG):?\s+(?P<message>.*)'
+      - labels:
+          level:
+      # Парсим uvicorn access log
+      - regex:
+          expression: '(?P<method>GET|POST|PUT|PATCH|DELETE)\s+(?P<path>/[^\s]*)\s+HTTP.*"?\s+(?P<status>\d{3})'
+      - labels:
+          method:
+          status:
+      # Временная метка
+      - timestamp:
+          source: time
+          format: RFC3339

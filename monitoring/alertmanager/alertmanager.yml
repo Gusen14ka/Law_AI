@@ -1,0 +1,72 @@
+global:
+  # SMTP для отправки email при авариях
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@lexanalytica.ru'
+  smtp_auth_username: 'your-gmail@gmail.com'   # ← ЗАМЕНИТЬ
+  smtp_auth_password: 'your-app-password'       # ← ЗАМЕНИТЬ (App Password из Google)
+  smtp_require_tls: true
+  resolve_timeout: 5m
+
+# Маршрутизация алертов
+route:
+  receiver: 'email-critical'       # получатель по умолчанию
+  group_by: ['alertname', 'job']   # группировать похожие алерты
+  group_wait: 30s                   # ждать перед первой отправкой
+  group_interval: 5m                # интервал повторных сообщений
+  repeat_interval: 4h               # повторять если не исправлено
+
+  routes:
+    # Критические аварии — немедленно
+    - match:
+        severity: critical
+      receiver: 'email-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Предупреждения — группировать, отправлять реже
+    - match:
+        severity: warning
+      receiver: 'email-warning'
+      group_wait: 2m
+      repeat_interval: 6h
+
+receivers:
+  - name: 'email-critical'
+    email_configs:
+      - to: 'faktur2005@yandex.ru'
+        send_resolved: true
+        html: |
+          <h2>АВАРИЯ В СИСТЕМЕ LEX ANALYTICA</h2>
+          {{ range .Alerts }}
+          <p><b>Алерт:</b> {{ .Annotations.summary }}</p>
+          <p>{{ .Annotations.description }}</p>
+          <p><b>Время:</b> {{ .StartsAt }}</p>
+          <hr>
+          {{ end }}
+        headers:
+          X-Priority: '1'
+          X-Mailer: 'Lex Analytica AlertManager'
+
+  - name: 'email-warning'
+    email_configs:
+      - to: 'faktur2005@yandex.ru'
+        send_resolved: true
+        html: |
+          <h2>ПРЕДУПРЕЖДЕНИЕ В СИСТЕМЕ LEX ANALYTICA</h2>
+          {{ range .Alerts }}
+          <p><b>Алерт:</b> {{ .Annotations.summary }}</p>
+          <p>{{ .Annotations.description }}</p>
+          <p><b>Время:</b> {{ .StartsAt }}</p>
+          <hr>
+          {{ end }}
+        headers:
+          X-Priority: '1'
+          X-Mailer: 'Lex Analytica AlertManager'
+
+# Подавление: не спамить предупреждениями если уже есть критическая авария
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
