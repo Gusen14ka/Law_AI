@@ -1,11 +1,12 @@
 services:
 
-  # ════════════════════════════════════════════
+  # ══════════════════════════════════════════
   # ПРИЛОЖЕНИЕ
-  # ════════════════════════════════════════════
+  # ══════════════════════════════════════════
 
   db:
     image: postgres:16-alpine
+    container_name: lex-db
     environment:
       POSTGRES_DB: lexanalytica
       POSTGRES_USER: lexuser
@@ -20,11 +21,14 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: lex-backend
     ports:
       - "8000:8000"
     environment:
@@ -37,6 +41,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # service_started а не service_healthy — ollama грузит модель 10-20 мин,
+      # бэкенд сам ретраит подключение к AI (retry в ai_module.py)
       ollama:
         condition: service_started
     volumes:
@@ -47,23 +53,36 @@ services:
         max-size: "10m"
         max-file: "5"
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: lex-frontend
     ports:
       - "5173:80"
     depends_on:
       - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   ollama:
     image: ollama/ollama:latest
+    container_name: lex-ollama
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+      - ./scripts/ollama-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
     deploy:
       resources:
         reservations:
@@ -74,14 +93,24 @@ services:
     environment:
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_KEEP_ALIVE=24h
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
-  # ════════════════════════════════════════════
-  # МОНИТОРИНГ
-  # ════════════════════════════════════════════
+  # ══════════════════════════════════════════
+  # МОНИТОРИНГ (всё в одном файле)
+  # ══════════════════════════════════════════
 
   prometheus:
     image: prom/prometheus:v2.53.0
+    container_name: lex-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -95,9 +124,12 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
+    container_name: lex-alertmanager
     ports:
       - "9093:9093"
     volumes:
@@ -105,15 +137,20 @@ services:
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   grafana:
     image: grafana/grafana:11.1.0
+    container_name: lex-grafana
     ports:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_SMTP_ENABLED=false
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/1_executive.json
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -122,30 +159,45 @@ services:
       - prometheus
       - loki
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   loki:
     image: grafana/loki:3.1.0
+    container_name: lex-loki
     ports:
       - "3100:3100"
     volumes:
       - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   promtail:
     image: grafana/promtail:3.1.0
+    container_name: lex-promtail
     volumes:
       - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
     command: -config.file=/etc/promtail/config.yml
     depends_on:
-      - loki
+      loki:
+        condition: service_healthy
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
+    container_name: lex-node-exporter
     ports:
       - "9100:9100"
     volumes:
@@ -157,9 +209,12 @@ services:
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: lex-postgres-exporter
     ports:
       - "9187:9187"
     environment:
@@ -168,6 +223,8 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    labels:
+      - "com.docker.compose.project=lexanalytica"
 
 volumes:
   postgres_data:

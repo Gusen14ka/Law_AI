@@ -1,7 +1,6 @@
 apiVersion: 1
-
 providers:
-  - name: 'Lex Analytica Dashboards'
+  - name: 'Lex Analytica'
     orgId: 1
     folder: 'Lex Analytica'
     type: file

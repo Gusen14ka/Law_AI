@@ -1,0 +1,305 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"type": "value", "options": {
+              "0": {"text": "🔴 АВАРИЯ",   "color": "red",   "index": 0},
+              "1": {"text": "🟢 РАБОТАЕТ", "color": "green", "index": 1}
+            }}
+          ],
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "green", "value": 1}
+          ]},
+          "noValue": "🔴 НЕТ ДАННЫХ"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "title": "Статус сервиса",
+      "type": "stat",
+      "targets": [{"expr": "up{job=\"lex-backend\"}", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]},
+          "unit": "short", "noValue": "0"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["sum"]}},
+      "title": "Запросов за последний час",
+      "description": "Суммарное число HTTP-запросов ко всем эндпоинтам API за 1 час. Включает: загрузки файлов, просмотры заявок, авторизацию.",
+      "type": "stat",
+      "targets": [{"expr": "increase(http_requests_total{job=\"lex-backend\"}[1h])", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "max": 100, "min": 0,
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "yellow", "value": 95},
+            {"color": "green", "value": 99}
+          ]},
+          "unit": "percent",
+          "noValue": "100 %"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "id": 3,
+      "options": {"orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}, "showThresholdLabels": true, "showThresholdMarkers": true},
+      "title": "Успешность запросов",
+      "description": "Доля успешных ответов (не 5xx ошибок сервера). При нулевом трафике показывает 100 % — это корректно. Цель: > 99 %.",
+      "type": "gauge",
+      "targets": [{
+        "expr": "100 * (1 - clamp_min(rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m]), 0) / clamp_min(rate(http_requests_total{job=\"lex-backend\"}[5m]), 1))",
+        "refId": "A",
+        "legendFormat": "% успешных",
+        "datasource": {"type": "prometheus", "uid": "prometheus"}
+      }]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "yellow", "value": 0},
+            {"color": "green", "value": 50}
+          ]},
+          "noValue": "Нет данных", "unit": "short"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "id": 4,
+      "options": {"colorMode": "background", "graphMode": "none", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "title": "NPS Score",
+      "description": "Net Promoter Score: от −100 до +100. Зелёный ≥ 50. Заполняется пользователями через форму «Оценить сервис» в личном кабинете, либо автоматически при нагрузочном тесте (load_test.py).",
+      "type": "stat",
+      "targets": [{"expr": "lex_nps_score", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "max": 5, "min": 1,
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "yellow", "value": 3},
+            {"color": "green", "value": 4}
+          ]},
+          "noValue": "Нет данных"
+        }
+      },
+      "gridPos": {"h": 5, "w": 8, "x": 0, "y": 4},
+      "id": 5,
+      "options": {"orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}, "showThresholdLabels": true, "showThresholdMarkers": true},
+      "title": "CSAT — Удовлетворённость (1–5 ★)",
+      "description": "Customer Satisfaction Score. Вопрос: «Насколько вы довольны анализом?». 1 = совсем недоволен, 5 = очень доволен. Цель: > 4.0. Собирается через кнопку «Оценить» после просмотра отчёта, или через load_test.py.",
+      "type": "gauge",
+      "targets": [{"expr": "lex_csat_score", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "max": 7, "min": 1,
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 4},
+            {"color": "red", "value": 6}
+          ]},
+          "noValue": "Нет данных"
+        }
+      },
+      "gridPos": {"h": 5, "w": 8, "x": 8, "y": 4},
+      "id": 6,
+      "options": {"orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}, "showThresholdLabels": true, "showThresholdMarkers": true},
+      "title": "CES — Простота использования (1–7)",
+      "description": "Customer Effort Score. Вопрос: «Насколько легко было загрузить документ и получить анализ?». 1 = очень легко, 7 = очень сложно. Меньше = лучше. Цель: < 3. Собирается через форму обратной связи после анализа.",
+      "type": "gauge",
+      "targets": [{"expr": "lex_ces_score", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "yellow", "value": 99},
+            {"color": "green", "value": 99.5}
+          ]},
+          "unit": "percent", "noValue": "Нет данных"
+        }
+      },
+      "gridPos": {"h": 5, "w": 8, "x": 16, "y": 4},
+      "id": 7,
+      "options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["mean"]}},
+      "title": "Uptime за 24 часа",
+      "description": "Доля времени когда сервис был доступен. SLA цель: ≥ 99.5 %.",
+      "type": "stat",
+      "targets": [{"expr": "avg_over_time(up{job=\"lex-backend\"}[24h]) * 100", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "green"},
+          "unit": "reqps",
+          "custom": {"lineWidth": 2, "fillOpacity": 8, "spanNulls": false}
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "✅ 2xx — успешные"},
+            "properties": [{"id": "color", "value": {"fixedColor": "#56a64b", "mode": "fixed"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "⚠️ 4xx — ошибки клиента"},
+            "properties": [{"id": "color", "value": {"fixedColor": "#f0a500", "mode": "fixed"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "🔴 5xx — ошибки сервера"},
+            "properties": [{"id": "color", "value": {"fixedColor": "#e02f44", "mode": "fixed"}}]
+          }
+        ]
+      },
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 9},
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max", "sum"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "title": "Трафик API — запросов в секунду",
+      "description": "Показывает нагрузку на API в реальном времени, разбитую по HTTP-статусам. Зелёный (2xx) = нормальная работа. Оранжевый (4xx) = ошибки в запросах клиентов (неверные данные, нет авторизации) — допустимо. Красный (5xx) = баги или сбои сервера — должен быть нулевым.",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"2..\"}[1m])",
+          "legendFormat": "✅ 2xx — успешные",
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus"}
+        },
+        {
+          "expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"4..\"}[1m])",
+          "legendFormat": "⚠️ 4xx — ошибки клиента",
+          "refId": "B",
+          "datasource": {"type": "prometheus", "uid": "prometheus"}
+        },
+        {
+          "expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[1m])",
+          "legendFormat": "🔴 5xx — ошибки сервера",
+          "refId": "C",
+          "datasource": {"type": "prometheus", "uid": "prometheus"}
+        }
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {"unit": "s", "custom": {"lineWidth": 2}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "P50 — медиана"}, "properties": [{"id": "color", "value": {"fixedColor": "#56a64b", "mode": "fixed"}}]},
+          {"matcher": {"id": "byName", "options": "P95 — 95% запросов"}, "properties": [{"id": "color", "value": {"fixedColor": "#f0a500", "mode": "fixed"}}]},
+          {"matcher": {"id": "byName", "options": "P99 — 99% запросов"}, "properties": [{"id": "color", "value": {"fixedColor": "#e02f44", "mode": "fixed"}}]}
+        ]
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18},
+      "id": 9,
+      "options": {
+        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      },
+      "title": "Время ответа API (перцентили)",
+      "description": "P50 (зелёный) — половина запросов обрабатывается быстрее этого времени. P95 (оранжевый) — 95% запросов. P99 (красный) — самые медленные 1%. Цель: P95 < 500 мс для GET запросов.",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m]))", "legendFormat": "P50 — медиана", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}},
+        {"expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m]))", "legendFormat": "P95 — 95% запросов", "refId": "B", "datasource": {"type": "prometheus", "uid": "prometheus"}},
+        {"expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m]))", "legendFormat": "P99 — 99% запросов", "refId": "C", "datasource": {"type": "prometheus", "uid": "prometheus"}}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {"unit": "short", "custom": {"lineWidth": 2}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "AI — успешных анализов"}, "properties": [{"id": "color", "value": {"fixedColor": "#56a64b", "mode": "fixed"}}]},
+          {"matcher": {"id": "byName", "options": "AI — ошибок"}, "properties": [{"id": "color", "value": {"fixedColor": "#e02f44", "mode": "fixed"}}]},
+          {"matcher": {"id": "byName", "options": "Отправлено юристам"}, "properties": [{"id": "color", "value": {"fixedColor": "#5794f2", "mode": "fixed"}}]},
+          {"matcher": {"id": "byName", "options": "Проверено юристами"}, "properties": [{"id": "color", "value": {"fixedColor": "#b877d9", "mode": "fixed"}}]}
+        ]
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18},
+      "id": 10,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      },
+      "title": "Бизнес-активность",
+      "description": "Бизнес-события за выбранный период: сколько документов AI проанализировал, сколько отправлено юристу, сколько проверено юристами.",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "increase(lex_ai_analyses_total{status=\"success\"}[1h])", "legendFormat": "AI — успешных анализов", "refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus"}},
+        {"expr": "increase(lex_ai_analyses_total{status=\"error\"}[1h])", "legendFormat": "AI — ошибок", "refId": "B", "datasource": {"type": "prometheus", "uid": "prometheus"}},
+        {"expr": "increase(lex_requests_sent_to_lawyer_total[1h])", "legendFormat": "Отправлено юристам", "refId": "C", "datasource": {"type": "prometheus", "uid": "prometheus"}},
+        {"expr": "increase(lex_requests_reviewed_by_lawyer_total[1h])", "legendFormat": "Проверено юристами", "refId": "D", "datasource": {"type": "prometheus", "uid": "prometheus"}}
+      ]
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 26},
+      "id": 11,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "title": "Логи backend (последние записи)",
+      "description": "Живые логи из контейнера lex-backend. Уровни: INFO (штатная работа), WARNING (потенциальные проблемы), ERROR (сбои). Фильтруйте по уровню кнопкой над таблицей.",
+      "type": "logs",
+      "targets": [{
+        "expr": "{service=\"backend\"}",
+        "refId": "A",
+        "datasource": {"type": "loki", "uid": "loki"}
+      }]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["lex-analytica", "executive"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Lex Analytica — Overview",
+  "version": 1
+}

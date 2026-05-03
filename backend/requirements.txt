@@ -24,7 +24,3 @@ reportlab==4.2.2
 # Monitoring & metrics
 prometheus-fastapi-instrumentator==7.0.0
 prometheus-client==0.20.0
-
-# Testing
-locust
-pytest

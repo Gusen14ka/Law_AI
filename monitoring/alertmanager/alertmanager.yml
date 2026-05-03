@@ -1,29 +1,23 @@
 global:
-  # SMTP для отправки email при авариях
   smtp_smarthost: 'smtp.gmail.com:587'
   smtp_from: 'alerts@lexanalytica.ru'
-  smtp_auth_username: 'your-gmail@gmail.com'   # ← ЗАМЕНИТЬ
-  smtp_auth_password: 'your-app-password'       # ← ЗАМЕНИТЬ (App Password из Google)
+  smtp_auth_username: 'glebuschon2005@gmail.com'   # ← ЗАМЕНИТЬ
+  smtp_auth_password: ''       # ← App Password из Google
   smtp_require_tls: true
   resolve_timeout: 5m
 
-# Маршрутизация алертов
 route:
-  receiver: 'email-critical'       # получатель по умолчанию
-  group_by: ['alertname', 'job']   # группировать похожие алерты
-  group_wait: 30s                   # ждать перед первой отправкой
-  group_interval: 5m                # интервал повторных сообщений
-  repeat_interval: 4h               # повторять если не исправлено
-
+  receiver: 'email-critical'
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
   routes:
-    # Критические аварии — немедленно
     - match:
         severity: critical
       receiver: 'email-critical'
       group_wait: 10s
       repeat_interval: 1h
-
-    # Предупреждения — группировать, отправлять реже
     - match:
         severity: warning
       receiver: 'email-warning'
@@ -33,40 +27,43 @@ route:
 receivers:
   - name: 'email-critical'
     email_configs:
-      - to: 'faktur2005@yandex.ru'
-        send_resolved: true
-        html: |
-          <h2>АВАРИЯ В СИСТЕМЕ LEX ANALYTICA</h2>
-          {{ range .Alerts }}
-          <p><b>Алерт:</b> {{ .Annotations.summary }}</p>
-          <p>{{ .Annotations.description }}</p>
-          <p><b>Время:</b> {{ .StartsAt }}</p>
-          <hr>
-          {{ end }}
+      - to: 'faktur2005@yandex.ru'  # ← ЗАМЕНИТЬ
         headers:
-          X-Priority: '1'
-          X-Mailer: 'Lex Analytica AlertManager'
+          Subject: '🚨 [АВАРИЯ] {{ .GroupLabels.alertname }} — Lex Analytica'
+        html: |
+          <h2 style="color:red">🚨 АВАРИЯ В СИСТЕМЕ LEX ANALYTICA</h2>
+          <hr>
+          {{ range .Alerts }}
+            <p><b>{{ .Annotations.summary }}</b></p>
+            <pre>{{ .Annotations.description }}</pre>
+            <p>Время: {{ .StartsAt.Format "02.01.2006 15:04:05" }}</p>
+            <p>Статус: <b>{{ .Status }}</b> | Severity: {{ .Labels.severity }}</p>
+            <hr>
+          {{ end }}
+          <p>
+            <a href="http://localhost:3000">Grafana</a> |
+            <a href="http://localhost:9090/alerts">Prometheus Alerts</a>
+          </p>
+        send_resolved: true
 
   - name: 'email-warning'
     email_configs:
-      - to: 'faktur2005@yandex.ru'
-        send_resolved: true
-        html: |
-          <h2>ПРЕДУПРЕЖДЕНИЕ В СИСТЕМЕ LEX ANALYTICA</h2>
-          {{ range .Alerts }}
-          <p><b>Алерт:</b> {{ .Annotations.summary }}</p>
-          <p>{{ .Annotations.description }}</p>
-          <p><b>Время:</b> {{ .StartsAt }}</p>
-          <hr>
-          {{ end }}
+      - to: 'faktur2005@yandex.ru'  # ← ЗАМЕНИТЬ
         headers:
-          X-Priority: '1'
-          X-Mailer: 'Lex Analytica AlertManager'
+          Subject: '⚠ [Предупреждение] {{ .GroupLabels.alertname }} — Lex Analytica'
+        html: |
+          <h3>⚠ Предупреждение Lex Analytica</h3>
+          {{ range .Alerts }}
+            <p><b>{{ .Annotations.summary }}</b></p>
+            <p>{{ .Annotations.description }}</p>
+            <p>Время: {{ .StartsAt.Format "02.01.2006 15:04:05" }}</p>
+            <hr>
+          {{ end }}
+        send_resolved: true
 
-# Подавление: не спамить предупреждениями если уже есть критическая авария
 inhibit_rules:
   - source_match:
       severity: 'critical'
     target_match:
       severity: 'warning'
-    equal: ['alertname', 'instance']
+    equal: ['alertname', 'service']
