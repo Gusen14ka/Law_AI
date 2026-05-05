@@ -41,6 +41,10 @@ export const api = {
   takeRequest: (uuid) => req('POST', `/lawyer/requests/${uuid}/take`),
   submitReview: (uuid, data) => req('POST', `/lawyer/requests/${uuid}/submit`, data),
 
+  // Feedback
+  submitFeedback: (type, data) => req('POST', `/feedback/${type}`, data),
+  feedbackStats: () => req('GET', '/feedback/stats'),
+
   // Admin
   adminUsers: () => req('GET', '/admin/users'),
   updateRole: (id, role) => req('PATCH', `/admin/users/${id}/role`, { role }),

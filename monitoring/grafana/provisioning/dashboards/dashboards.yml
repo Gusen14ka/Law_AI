@@ -5,6 +5,7 @@ providers:
     folder: 'Lex Analytica'
     type: file
     disableDeletion: false
-    updateIntervalSeconds: 10
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
     options:
       path: /var/lib/grafana/dashboards
