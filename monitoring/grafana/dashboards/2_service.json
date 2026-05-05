@@ -1,0 +1,94 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}, "unit": "none"}},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "title": "Backend API up?",
+      "type": "stat",
+      "targets": [{"expr": "up{job=\"lex-backend\"}", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "title": "PostgreSQL up?",
+      "type": "stat",
+      "targets": [{"expr": "pg_up", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "id": 3,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "title": "Ollama reachable?",
+      "type": "stat",
+      "targets": [{"expr": "up{job=\"ollama-health\"}", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 1}},
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "id": 4,
+      "options": {"legend": {"calcs": ["mean"], "displayMode": "list"}},
+      "title": "Запросов в секунду (общее)",
+      "type": "timeseries",
+      "targets": [{"expr": "rate(http_requests_total{job=\"lex-backend\"}[1m])", "legendFormat": "RPS"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 95}, {"color": "green", "value": 99}]}}},
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "id": 5,
+      "options": {"orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "title": "Успешность запросов (non‑5xx)",
+      "type": "gauge",
+      "targets": [{"expr": "100 * (1 - sum(rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"lex-backend\"}[5m])), 1))", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 6,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"}},
+      "title": "Время ответа API по эндпоинтам (P95)",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"lex-backend\",handler=~\"/api/.*\"}[5m])) by (le, handler))", "legendFormat": "{{handler}}", "refId": "A"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 7,
+      "options": {"legend": {"calcs": ["sum"], "displayMode": "table"}},
+      "title": "Ошибки по статусам (4xx и 5xx)",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"4..\"}[5m])", "legendFormat": "4xx", "refId": "A"},
+        {"expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m])", "legendFormat": "5xx", "refId": "B"}
+      ]
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 12},
+      "id": 8,
+      "options": {"showLabels": true, "showTime": true, "wrapLogMessage": true},
+      "title": "Логи предупреждений и ошибок (backend)",
+      "type": "logs",
+      "targets": [{"expr": "{service=\"backend\"} |= `` |~ `(?i)(error|warn|exception|fail)`", "refId": "A"}]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "title": "Lex Analytica — Service Overview",
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser"
+}
