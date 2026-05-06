@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 import aiofiles
@@ -63,6 +64,7 @@ app.add_middleware(
 parser = DocumentParser()
 ai = AIModule()
 builder = ResponseBuilder()
+
 
 
 @app.on_event("startup")
@@ -186,7 +188,7 @@ async def create_request(
     await db.commit()
     await db.refresh(req)
 
-    documents_uploaded.labels(file_type=ext.lstrip(".")).inc()
+    documents_uploaded.inc()
     ai_queue_size.inc()
     logger.info(f"Document uploaded: {file.filename} by user_id={current_user.id}")
 

@@ -58,27 +58,51 @@ CONTRACT_TEXTS = [
 
 
 def make_pdf(text: str) -> bytes:
-    """Минимальный валидный PDF который PyPDF2 умеет читать."""
-    safe = text[:500].encode('latin-1', errors='replace').decode('latin-1')
-    safe = safe.replace('\\', '').replace('(', '[').replace(')', ']')
-    stream_content = f"BT /F1 10 Tf 50 750 Td ({safe}) Tj ET"
+    """
+    Генерирует валидный PDF с правильными xref-смещениями.
+    Предыдущая версия имела hardcoded startxref=9, что вызывало
+    ошибку "trailer can not be read" в PyPDF2.
+    """
+    # Только ASCII-безопасные символы для PDF-строки
+    safe = ''.join(
+        c if (32 <= ord(c) < 127 and c not in '()\\') else ' '
+        for c in text[:800]
+    )
+
+    stream_content = f"BT /F1 9 Tf 40 750 Td 20 TL ({safe}) Tj ET"
     stream_bytes = stream_content.encode('latin-1')
     stream_len = len(stream_bytes)
 
-    pdf = (
-        b"%PDF-1.4\n"
-        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]"
-        b"/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
-        + f"4 0 obj<</Length {stream_len}>>\nstream\n".encode()
-        + stream_bytes
-        + b"\nendstream\nendobj\n"
-        b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
-        b"xref\n0 6\n0000000000 65535 f \n"
-        b"trailer<</Size 6/Root 1 0 R>>\nstartxref\n9\n%%EOF"
+    parts = []
+    offsets = {}
+
+    header = b"%PDF-1.4\n"
+    parts.append(header)
+    pos = len(header)
+
+    def add_obj(n, content_str):
+        nonlocal pos
+        offsets[n] = pos
+        obj = f"{n} 0 obj\n{content_str}\nendobj\n".encode('latin-1')
+        parts.append(obj)
+        pos += len(obj)
+
+    add_obj(1, "<</Type /Catalog /Pages 2 0 R>>")
+    add_obj(2, "<</Type /Pages /Kids [3 0 R] /Count 1>>")
+    add_obj(3, "<</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources <</Font <</F1 5 0 R>>>>>>")
+    add_obj(4, f"<</Length {stream_len}>>\nstream\n{stream_content}\nendstream")
+    add_obj(5, "<</Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding>>")
+
+    xref_offset = pos
+    xref = b"xref\n0 6\n0000000000 65535 f \n"
+    for i in range(1, 6):
+        xref += f"{offsets[i]:010d} 00000 n \n".encode()
+
+    parts.append(xref)
+    parts.append(
+        f"trailer\n<</Size 6 /Root 1 0 R>>\nstartxref\n{xref_offset}\n%%EOF\n".encode()
     )
-    return pdf
+    return b"".join(parts)
 
 
 # ── Базовый класс ─────────────────────────────────────────────────────────────

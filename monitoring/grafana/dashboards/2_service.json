@@ -31,7 +31,7 @@
       "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
       "title": "Ollama reachable?",
       "type": "stat",
-      "targets": [{"expr": "up{job=\"ollama-health\"}", "refId": "A"}]
+      "targets": [{"expr": "ollama_up", "refId": "A"}]
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
@@ -51,7 +51,7 @@
       "options": {"orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
       "title": "Успешность запросов (non‑5xx)",
       "type": "gauge",
-      "targets": [{"expr": "100 * (1 - sum(rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"lex-backend\"}[5m])), 1))", "refId": "A"}]
+      "targets": [{"expr": "100 * (1 - (sum(rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[1h])) or vector(0)) / clamp_min(sum(rate(http_requests_total{job=\"lex-backend\"}[1h])), 1))", "refId": "A"}]
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
@@ -69,11 +69,11 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
       "id": 7,
       "options": {"legend": {"calcs": ["sum"], "displayMode": "table"}},
-      "title": "Ошибки по статусам (4xx и 5xx)",
+      "title": "Ошибки по статусам (4xx и 5xx) (в сек.)",
       "type": "timeseries",
       "targets": [
-        {"expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"4..\"}[5m])", "legendFormat": "4xx", "refId": "A"},
-        {"expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m])", "legendFormat": "5xx", "refId": "B"}
+        {"expr": "sum(rate(http_requests_total{job=\"lex-backend\",status=~\"4..\"}[5m])) or vector(0)", "legendFormat": "4xx", "refId": "A"},
+        {"expr": "sum(rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m])) or vector(0)", "legendFormat": "5xx", "refId": "B"}
       ]
     },
     {

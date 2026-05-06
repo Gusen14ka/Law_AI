@@ -30,7 +30,7 @@
       "options": {"orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
       "title": "Disk Usage (/ — корень)",
       "type": "gauge",
-      "targets": [{"expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100", "refId": "A"}]
+      "targets": [{"expr": "100 * (1 - sum(node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"}) / sum(node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"}))", "refId": "A"}]
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
@@ -54,18 +54,6 @@
       "targets": [
         {"expr": "rate(node_disk_reads_completed_total[5m])", "legendFormat": "Reads/s", "refId": "A"},
         {"expr": "rate(node_disk_writes_completed_total[5m])", "legendFormat": "Writes/s", "refId": "B"}
-      ]
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 13},
-      "id": 6,
-      "options": {"legend": {"calcs": ["mean", "current"], "displayMode": "table"}},
-      "title": "Загрузка GPU (Ollama) — если доступно",
-      "type": "timeseries",
-      "targets": [
-        {"expr": "DCGM_FI_DEV_GPU_UTIL{job=\"nvidia-dcgm\"} or vector(0)", "legendFormat": "GPU util %", "refId": "A"},
-        {"expr": "DCGM_FI_DEV_MEM_COPY_UTIL{job=\"nvidia-dcgm\"} or vector(0)", "legendFormat": "MEM copy util", "refId": "B"}
       ]
     },
     {

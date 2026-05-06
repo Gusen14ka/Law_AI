@@ -47,15 +47,15 @@ scrape_configs:
           service: 'monitoring'
 
   # Ollama healthcheck через /api/tags
-  - job_name: 'ollama-health'
-    metrics_path: '/api/tags'
-    static_configs:
-      - targets: ['lex-ollama:11434']
-        labels:
-          service: 'ollama'
-    # Превращаем HTTP-ответ в up/down метрику
-    params: {}
-    scheme: http
-    relabel_configs:
-      - target_label: __address__
-        replacement: 'lex-ollama:11434'
+  # - job_name: 'ollama-health'
+  #   metrics_path: '/api/tags'
+  #   static_configs:
+  #     - targets: ['lex-ollama:11434']
+  #       labels:
+  #         service: 'ollama'
+  #   # Превращаем HTTP-ответ в up/down метрику
+  #   params: {}
+  #   scheme: http
+  #   relabel_configs:
+  #     - target_label: __address__
+  #       replacement: 'lex-ollama:11434'

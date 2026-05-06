@@ -205,6 +205,7 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
+      - '--path.rootfs=/rootfs'
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'

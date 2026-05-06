@@ -29,10 +29,10 @@ groups:
           description: "База данных не отвечает. Все операции с данными невозможны."
 
       - alert: OllamaDown
-        expr: up{job="ollama-health"} == 0
+        expr: ollama_up == 0
         for: 60s
         labels:
-          severity: warning
+          severity: critical
           service: ollama
         annotations:
           summary: "⚠ Ollama (LLM) недоступна"
