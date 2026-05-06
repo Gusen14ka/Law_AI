@@ -1,0 +1,53 @@
+{
+  "title": "Executive Overview",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Service Status",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "up{job=\"lex-backend\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Uptime (24h)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "avg_over_time(up{job=\"lex-backend\"}[24h]) * 100",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "NPS",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "lex_nps_score",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Requests (1h)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "increase(http_requests_total{job=\"lex-backend\"}[1h])",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": {"from": "now-1h", "to": "now"}
+}

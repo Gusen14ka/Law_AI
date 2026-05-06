@@ -1,0 +1,27 @@
+{
+  "title": "Debug / Logs",
+  "panels": [
+    {
+      "type": "logs",
+      "title": "All Logs",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "{job=\"docker\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Count",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [
+        {
+          "expr": "count_over_time({job=\"docker\"} |~ \"(?i)error\" [5m])",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

@@ -249,10 +249,12 @@ class UserBehavior(LexBase):
             if r.status_code == 200:
                 r.success()
             elif r.status_code == 400:
-                # Уже отправлена — это нормально
+                # 400 = статус не ai_done (AI ещё думает или уже у юриста) — не ошибка теста
                 r.success()
             elif r.status_code == 404:
-                r.success()  # UUID устарел
+                r.success()  # UUID устарел между list и send
+            elif r.status_code == 403:
+                r.success()  # нет доступа к чужой заявке — race condition при параллельных users
             elif r.status_code == 401:
                 r.failure("Unauthorized"); self._ok = False
             else:

@@ -7,7 +7,15 @@ DATABASE_URL = os.getenv(
     "postgresql+asyncpg://lexuser:lexpass123@localhost:5432/lexanalytica"
 )
 
-engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=20,          # базовый пул (было 5 по умолчанию)
+    max_overflow=20,       # доп. соединения при пике (было 10)
+    pool_timeout=30,       # таймаут ожидания свободного слота
+    pool_recycle=1800,     # пересоздавать соединения каждые 30 мин
+)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 

@@ -65,12 +65,20 @@ async def get_current_user(
     if not session_data:
         raise HTTPException(status_code=401, detail="Сессия истекла")
 
+    # Кешируем пользователя в request.state чтобы не делать повторный SELECT
+    # если get_current_user вызывается несколько раз в одном запросе
+    # (например через require_any + явный Depends(get_db) в handler).
+    cached = getattr(request.state, "_current_user", None)
+    if cached and cached.id == session_data["user_id"]:
+        return cached
+
     result = await db.execute(select(User).where(User.id == session_data["user_id"]))
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
 
+    request.state._current_user = user
     return user
 
 

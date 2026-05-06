@@ -1,0 +1,38 @@
+{
+  "title": "Service Overview",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "RPS",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job=\"lex-backend\"}[1m])",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Rate",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[1m])",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency P95",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m]))",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 global:
   smtp_smarthost: 'smtp.gmail.com:587'
   smtp_from: 'alerts@lexanalytica.ru'
-  smtp_auth_username: 'your-gmail@gmail.com'   # ← ЗАМЕНИТЬ
-  smtp_auth_password: 'your-app-password'       # ← App Password из Google
+  smtp_auth_username: 'glebuschon2005@gmail.com'   # ← ЗАМЕНИТЬ
+  smtp_auth_password: 'ibzx ssvt dgjt oijb'       # ← App Password из Google
   smtp_require_tls: true
   resolve_timeout: 5m
 
@@ -27,7 +27,7 @@ route:
 receivers:
   - name: 'email-critical'
     email_configs:
-      - to: 'your-email@example.com'  # ← ЗАМЕНИТЬ
+      - to: 'faktur2005@yandex.ru'  # ← ЗАМЕНИТЬ
         headers:
           Subject: '🚨 [АВАРИЯ] {{ .GroupLabels.alertname }} — Lex Analytica'
         html: |
@@ -48,7 +48,7 @@ receivers:
 
   - name: 'email-warning'
     email_configs:
-      - to: 'your-email@example.com'  # ← ЗАМЕНИТЬ
+      - to: 'faktur2005@yandex.ru'  # ← ЗАМЕНИТЬ
         headers:
           Subject: '⚠ [Предупреждение] {{ .GroupLabels.alertname }} — Lex Analytica'
         html: |

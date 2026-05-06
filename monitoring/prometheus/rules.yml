@@ -4,7 +4,7 @@ groups:
     rules:
       - alert: WebServiceDown
         expr: up{job="lex-backend"} == 0
-        for: 30s
+        for: 10s
         labels:
           severity: critical
           service: backend
@@ -20,7 +20,7 @@ groups:
 
       - alert: DatabaseDown
         expr: pg_up == 0
-        for: 30s
+        for: 10s
         labels:
           severity: critical
           service: database
@@ -30,7 +30,7 @@ groups:
 
       - alert: OllamaDown
         expr: ollama_up == 0
-        for: 60s
+        for: 10s
         labels:
           severity: critical
           service: ollama

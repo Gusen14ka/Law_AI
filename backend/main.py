@@ -51,6 +51,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 MAX_FILE_SIZE = 15 * 1024 * 1024
 
+# Ограничиваем кол-во одновременных AI-задач: Ollama обрабатывает по 1 запросу
+# (OLLAMA_NUM_PARALLEL=1), бо́льшая очередь только увеличивает latency и давит
+# на пул соединений. Значение можно передать через env AI_CONCURRENCY.
+_ai_semaphore = asyncio.Semaphore(int(os.getenv("AI_CONCURRENCY", "3")))
+
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 
 app.add_middleware(
@@ -64,7 +69,6 @@ app.add_middleware(
 parser = DocumentParser()
 ai = AIModule()
 builder = ResponseBuilder()
-
 
 
 @app.on_event("startup")
@@ -185,10 +189,12 @@ async def create_request(
         user_comment=comment or None
     )
     db.add(req)
+    await db.flush()   # получаем req.id и req.uuid от БД без закрытия транзакции
     await db.commit()
-    await db.refresh(req)
+    # db.refresh(req) убран — req.id и req.uuid уже доступны после flush,
+    # лишний SELECT только увеличивал latency на upload
 
-    documents_uploaded.inc()
+    documents_uploaded.labels(file_type=ext.lstrip(".")).inc()
     ai_queue_size.inc()
     logger.info(f"Document uploaded: {file.filename} by user_id={current_user.id}")
 
@@ -200,47 +206,60 @@ async def create_request(
 async def run_ai_analysis(request_id: int, file_path: str, filename: str):
     from database import AsyncSessionLocal
     start = time.time()
-    async with AsyncSessionLocal() as db:
-        try:
+
+    # ── Шаг 1: Читаем данные и сразу закрываем соединение ───────────────────
+    # ВАЖНО: не держим DB-соединение пока Ollama генерирует ответ (может
+    # занимать 30–120 с) — именно это исчерпывало pool_size=5 при нагрузке.
+    try:
+        async with AsyncSessionLocal() as db:
             result = await db.execute(select(DocumentRequest).where(DocumentRequest.id == request_id))
             req = result.scalar_one_or_none()
             if not req:
+                ai_queue_size.dec()
                 return
+            saved_file_path = req.file_path
+    except Exception as e:
+        logger.error(f"AI analysis failed to load request_id={request_id}: {e}")
+        ai_queue_size.dec()
+        return
 
-            text = parser.extract_text(file_path, filename)
+    # ── Шаг 2: Парсим текст и вызываем AI — без открытой DB-сессии ──────────
+    # Семафор ограничивает параллельные вызовы AI, не давая очереди расти
+    # быстрее, чем Ollama успевает обрабатывать.
+    async with _ai_semaphore:
+        try:
+            text = parser.extract_text(saved_file_path, filename)
+
             if not text or len(text.strip()) < 30:
-                req.status = RequestStatus.ai_done
-                req.ai_report = {"error": "Не удалось извлечь текст из документа"}
-                req.ai_analyzed_at = datetime.utcnow()
-                await db.commit()
+                report = {"error": "Не удалось извлечь текст из документа"}
                 ai_analyses_total.labels(status="error").inc()
-                return
-
-            raw = await ai.analyze(text)
-            report = builder.parse(raw)
-
-            req.ai_report = report
-            req.ai_analyzed_at = datetime.utcnow()
-            req.status = RequestStatus.ai_done
-            await db.commit()
-
-            duration = time.time() - start
-            ai_analysis_duration.observe(duration)
-            ai_analyses_total.labels(status="success").inc()
-            ai_queue_size.dec()
-            logger.info(f"AI analysis done for request_id={request_id} in {duration:.1f}s")
+            else:
+                raw = await ai.analyze(text)
+                report = builder.parse(raw)
+                duration = time.time() - start
+                ai_analysis_duration.observe(duration)
+                ai_analyses_total.labels(status="success").inc()
+                logger.info(f"AI analysis done for request_id={request_id} in {duration:.1f}s")
 
         except Exception as e:
             logger.error(f"AI analysis failed for request_id={request_id}: {e}")
-            try:
-                req.status = RequestStatus.ai_done
-                req.ai_report = {"error": str(e)}
+            report = {"error": str(e)}
+            ai_analyses_total.labels(status="error").inc()
+
+    # ── Шаг 3: Сохраняем результат — новое короткое соединение ──────────────
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(DocumentRequest).where(DocumentRequest.id == request_id))
+            req = result.scalar_one_or_none()
+            if req:
+                req.ai_report = report
                 req.ai_analyzed_at = datetime.utcnow()
+                req.status = RequestStatus.ai_done
                 await db.commit()
-                ai_analyses_total.labels(status="error").inc()
-                ai_queue_size.dec()
-            except Exception:
-                pass
+    except Exception as e:
+        logger.error(f"AI analysis: failed to save result for request_id={request_id}: {e}")
+    finally:
+        ai_queue_size.dec()
 
 
 @app.get("/api/requests")
