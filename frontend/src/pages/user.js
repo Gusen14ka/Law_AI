@@ -1,3 +1,4 @@
+import { showFeedbackModal } from './feedback.js'
 import { el, toast, formatDate, formatSize, statusLabel, spinner } from '../ui.js'
 import { renderLayout } from '../components/layout.js'
 import { api } from '../api/client.js'
@@ -147,6 +148,15 @@ export async function renderRequestDetail({ uuid }) {
       // AI Report
       r.ai_report && !r.ai_report.error ? renderAIReport(r) : null,
       r.ai_report?.error ? el('div', { class: 'error-box' }, '⚠ AI ошибка: ' + r.ai_report.error) : null,
+      // Feedback button — show after AI report is ready
+      r.status === 'ai_done' || r.status === 'lawyer_done' || r.status === 'pending_lawyer' ? el('div', { style: 'margin-top:12px' },
+        el('button', {
+          class: 'btn-ghost',
+          style: 'font-size:12px;color:var(--text3)',
+          onclick: () => showFeedbackModal(r.uuid)
+        }, '⭐ Оценить анализ')
+      ) : null,
+
       // Send to lawyer button
       r.status === 'ai_done' ? el('div', { style: 'margin-top:20px' },
         el('button', { class: 'btn-accent', onclick: async () => {

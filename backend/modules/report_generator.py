@@ -9,7 +9,7 @@ class ReportGenerator:
     def __init__(self):
         os.makedirs(REPORT_DIR, exist_ok=True)
 
-    def generate_pdf(self, data: dict, request_meta: dict = None) -> str: # type: ignore
+    def generate_pdf(self, data: dict, request_meta: dict = None) -> str:
         """Generate a PDF report from analysis data. Returns path to file."""
         try:
             from reportlab.lib.pagesizes import A4

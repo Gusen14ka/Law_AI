@@ -1,0 +1,92 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s", "custom": {"lineWidth": 2}}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table"}},
+      "title": "Латентность API: P50, P95, P99",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m])) by (le))", "legendFormat": "P50", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m])) by (le))", "legendFormat": "P95", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m])) by (le))", "legendFormat": "P99", "refId": "C"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "options": {"legend": {"calcs": ["max"], "displayMode": "list"}},
+      "title": "Топ‑5 медленных эндпоинтов (P95 за последние 5 мин)",
+      "type": "timeseries",
+      "targets": [{"expr": "topk(5, histogram_quantile(0.95, sum by (le, handler) (rate(http_request_duration_seconds_bucket{job=\"lex-backend\"}[5m]))))", "legendFormat": "{{handler}}", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "options": {"legend": {"calcs": ["sum"], "displayMode": "table"}},
+      "title": "Частота ошибок по кодам ответа",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{job=\"lex-backend\",status=~\"2..\"}[5m])) by (status)", "legendFormat": "2xx", "refId": "A"},
+        {"expr": "sum(rate(http_requests_total{job=\"lex-backend\",status=~\"4..\"}[5m])) by (status)", "legendFormat": "4xx", "refId": "B"},
+        {"expr": "sum(rate(http_requests_total{job=\"lex-backend\",status=~\"5..\"}[5m])) by (status)", "legendFormat": "5xx", "refId": "C"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "options": {"legend": {"calcs": ["mean"], "displayMode": "list"}},
+      "title": "Длительность AI-анализа (buckets)",
+      "type": "histogram",
+      "targets": [{"expr": "increase(lex_ai_analysis_duration_seconds_bucket[1h])", "legendFormat": "{{le}} сек", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 16},
+      "id": 5,
+      "options": {"enableLogDetails": true, "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "title": "Полные логи бэкенда (уровень DEBUG/INFO/ERROR)",
+      "type": "logs",
+      "targets": [{"expr": "{service=\"backend\"}", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 26},
+      "id": 6,
+      "options": {"displayMode": "table", "orientation": "auto"},
+      "title": "Активные сессии",
+      "type": "stat",
+      "targets": [{"expr": "lex_active_sessions_total", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 26},
+      "id": 7,
+      "options": {"displayMode": "table"},
+      "title": "Заявок в очереди AI",
+      "type": "stat",
+      "targets": [{"expr": "lex_ai_queue_size", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 26},
+      "id": 8,
+      "options": {"displayMode": "table"},
+      "title": "Загружено документов (за 1 час)",
+      "type": "stat",
+      "targets": [{"expr": "round(sum(increase(lex_documents_uploaded_total[1h])))", "refId": "A"}]
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "title": "Lex Analytica — Debugging / Deep Dive",
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser"
+}

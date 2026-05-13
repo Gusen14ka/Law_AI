@@ -1,0 +1,111 @@
+groups:
+  - name: service_availability
+    interval: 30s
+    rules:
+      - alert: WebServiceDown
+        expr: up{job="lex-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "🚨 АВАРИЯ: Веб-сервис Lex Analytica недоступен"
+          description: |
+            Бэкенд не отвечает уже {{ $value }} секунд.
+            Prometheus не может получить метрики с /metrics.
+            Действия:
+              1. docker-compose logs lex-backend
+              2. docker-compose restart lex-backend
+              3. docker-compose logs lex-db
+
+      - alert: DatabaseDown
+        expr: pg_up == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "🚨 АВАРИЯ: PostgreSQL недоступен"
+          description: "База данных не отвечает. Все операции с данными невозможны."
+
+      - alert: OllamaDown
+        expr: ollama_up == 0
+        for: 60s
+        labels:
+          severity: critical
+          service: ollama
+        annotations:
+          summary: "⚠ Ollama (LLM) недоступна"
+          description: "AI-сервис не отвечает. Анализ новых документов невозможен."
+
+  - name: performance
+    rules:
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="lex-backend"}[5m])
+          ) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокое время ответа API (P95 > 5с)"
+          description: "P95 = {{ $value | humanizeDuration }}. Возможна перегрузка или проблема с БД."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="lex-backend",status=~"5.."}[5m])
+            /
+            rate(http_requests_total{job="lex-backend"}[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокий процент серверных ошибок (> 5%)"
+          description: "Доля 5xx: {{ $value | humanizePercentage }}. Проверьте логи: docker-compose logs lex-backend"
+
+  - name: resources
+    rules:
+      - alert: HighCPU
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокая загрузка CPU > 85%"
+          description: "CPU: {{ $value | humanize }}%"
+
+      - alert: LowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"}
+          / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Мало места на диске (< 15%)"
+          description: "Свободно: {{ $value | humanize }}%"
+
+      - alert: HighMemory
+        expr: |
+          (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Высокое потребление RAM > 90%"
+          description: "RAM занята на {{ $value | humanize }}%"
+
+  - name: database
+    rules:
+      - alert: TooManyConnections
+        expr: pg_stat_activity_count > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠ Много соединений PostgreSQL (> 80)"
+          description: "Текущее количество: {{ $value }}"

@@ -12,7 +12,7 @@ alembic==1.13.3
 # Auth
 itsdangerous==2.2.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.2.0
+bcrypt==4.0.1
 
 # Document parsing
 PyPDF2==3.0.1
@@ -20,3 +20,9 @@ python-docx==1.1.2
 
 # Report
 reportlab==4.2.2
+
+# Monitoring & metrics
+prometheus-fastapi-instrumentator==7.0.0
+prometheus-client==0.20.0
+nvidia-ml-py3
+requests
