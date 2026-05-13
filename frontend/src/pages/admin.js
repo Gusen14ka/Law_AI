@@ -47,32 +47,69 @@ export async function renderAdminUsers() {
             )
           ),
           el('tbody', {},
-            ...users.map(u => el('tr', {},
-              el('td', {}, u.full_name),
-              el('td', {}, u.email),
-              el('td', {},
-                el('select', { class: 'select-inline', onchange: async (e) => {
-                  try { await api.updateRole(u.id, e.target.value); toast('Роль изменена', 'success') }
-                  catch (err) { toast(err.message, 'error'); reload() }
-                }},
-                  ...['user', 'lawyer', 'admin'].map(role => {
-                    const o = el('option', { value: role }, { user: 'Пользователь', lawyer: 'Юрист', admin: 'Администратор' }[role])
-                    if (role === u.role) o.selected = true
-                    return o
-                  })
+            ...users.map(u => {
+              const _rawActive = u.is_active
+              const _sActive = String(_rawActive).toLowerCase()
+              const isActive =
+                _rawActive === true ||
+                _rawActive === 1 ||
+                _sActive === '1' ||
+                _sActive === 'true'
+
+              return el('tr', {},
+                el('td', {}, u.full_name),
+                el('td', {}, u.email),
+
+                el('td', {},
+                  el('select', {
+                    class: 'select-inline',
+                    onchange: async (e) => {
+                      try {
+                        await api.updateRole(u.id, e.target.value)
+                        toast('Роль изменена', 'success')
+                      } catch (err) {
+                        toast(err.message, 'error')
+                        reload()
+                      }
+                    }
+                  },
+                    ...['user', 'lawyer', 'admin'].map(role => {
+                      const o = el(
+                        'option',
+                        { value: role },
+                        { user: 'Пользователь', lawyer: 'Юрист', admin: 'Администратор' }[role]
+                      )
+                      if (role === u.role) o.selected = true
+                      return o
+                    })
+                  )
+                ),
+
+                el('td', {},
+                  el('span',
+                    { class: isActive ? 'badge-active' : 'badge-blocked' },
+                    isActive ? '✅ Активен' : '🚫 Заблокирован'
+                  )
+                ),
+
+                el('td', {}, formatDate(u.created_at)),
+
+                el('td', {},
+                  el('button', {
+                    class: 'btn-ghost',
+                    onclick: async () => {
+                      try {
+                        const r = await api.toggleUser(u.id)
+                        toast(r.message, 'success')
+                        reload()
+                      } catch (err) {
+                        toast(err.message, 'error')
+                      }
+                    }
+                  }, isActive ? 'Блок.' : 'Разблок.')
                 )
-              ),
-              el('td', {}, el('span', { class: u.is_active ? 'badge-active' : 'badge-blocked' },
-                u.is_active ? '✅ Активен' : '🚫 Заблокирован'
-              )),
-              el('td', {}, formatDate(u.created_at)),
-              el('td', {},
-                el('button', { class: 'btn-ghost', onclick: async () => {
-                  try { const r = await api.toggleUser(u.id); toast(r.message, 'success'); reload() }
-                  catch (err) { toast(err.message, 'error') }
-                }}, u.is_active ? 'Блок.' : 'Разблок.')
               )
-            ))
+            })
           )
         )
       )
