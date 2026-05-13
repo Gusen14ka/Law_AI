@@ -407,3 +407,76 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: 
 .nps-good.active { border-color: var(--green);   background: rgba(76,174,126,0.2); color: var(--green); }
 
 .feedback-done { padding: 20px 0; }
+
+/* ── Disclaimer Modal ── */
+.disclaimer-overlay { pointer-events: none; }
+.disclaimer-overlay.show { pointer-events: all; }
+
+.disclaimer-box {
+  width: 520px;
+  max-width: 96vw;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.disclaimer-icon {
+  font-size: 36px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.disclaimer-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  color: var(--text);
+  text-align: center;
+  margin: 0 0 20px 0;
+}
+
+.disclaimer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text2);
+}
+
+.disclaimer-body p { margin: 0; }
+.disclaimer-body strong { color: var(--text); }
+
+.disclaimer-callout {
+  background: rgba(180, 140, 60, 0.08);
+  border: 1px solid rgba(180, 140, 60, 0.3);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.disclaimer-callout p { color: var(--text); }
+
+.disclaimer-fine {
+  font-size: 12px !important;
+  color: var(--text3) !important;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 4px !important;
+}
+
+.disclaimer-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text3);
+  cursor: pointer;
+  margin-top: 18px;
+  user-select: none;
+}
+.disclaimer-check input { cursor: pointer; accent-color: var(--accent); }
+
+.disclaimer-btn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 13px;
+  font-size: 15px;
+}
